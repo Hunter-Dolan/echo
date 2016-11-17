@@ -1,7 +1,5 @@
 package echo
 
-import "strings"
-
 type (
 	// Router is the registry of all registered routes for an `Echo` instance for
 	// request matching and URL path parameter parsing.
@@ -53,7 +51,7 @@ func NewRouter(e *Echo) *Router {
 }
 
 // Add registers a new route for method and path with matching handler.
-func (r *Router) Add(method, path string, h HandlerFunc) {
+func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
 	// Validate path
 	if path == "" {
 		panic("echo: path cannot be empty")
@@ -68,7 +66,7 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 		if path[i] == ':' {
 			j := i + 1
 
-			r.insert(method, path[:i], nil, skind, "", nil)
+			r.insert(method, path[:i], nil, skind, "", nil, e)
 			for ; i < l && path[i] != '/'; i++ {
 			}
 
@@ -77,26 +75,26 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 			i, l = j, len(path)
 
 			if i == l {
-				r.insert(method, path[:i], h, pkind, ppath, pnames)
+				r.insert(method, path[:i], h, pkind, ppath, pnames, e)
 				return
 			}
-			r.insert(method, path[:i], nil, pkind, ppath, pnames)
+			r.insert(method, path[:i], nil, pkind, ppath, pnames, e)
 		} else if path[i] == '*' {
-			r.insert(method, path[:i], nil, skind, "", nil)
-			pnames = append(pnames, "*")
-			r.insert(method, path[:i+1], h, akind, ppath, pnames)
+			r.insert(method, path[:i], nil, skind, "", nil, e)
+			pnames = append(pnames, "_*")
+			r.insert(method, path[:i+1], h, akind, ppath, pnames, e)
 			return
 		}
 	}
 
-	r.insert(method, path, h, skind, ppath, pnames)
+	r.insert(method, path, h, skind, ppath, pnames, e)
 }
 
-func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string, pnames []string) {
+func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string, pnames []string, e *Echo) {
 	// Adjust max param
 	l := len(pnames)
-	if *r.echo.maxParam < l {
-		*r.echo.maxParam = l
+	if *e.maxParam < l {
+		*e.maxParam = l
 	}
 
 	cn := r.tree // Current node as root
@@ -172,15 +170,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 			if h != nil {
 				cn.addHandler(method, h)
 				cn.ppath = ppath
-				if len(cn.pnames) == 0 { // Issue #729
-					cn.pnames = pnames
-				}
-				for i, n := range pnames {
-					// Param name aliases
-					if !strings.Contains(n, pnames[i]) {
-						cn.pnames[i] += "," + pnames[i]
-					}
-				}
+				cn.pnames = pnames
 			}
 		}
 		return
@@ -353,7 +343,7 @@ func (r *Router) Find(method, path string, context Context) {
 		// Static node
 		if c = cn.findChild(search[0], skind); c != nil {
 			// Save next
-			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
+			if cn.label == '/' {
 				nk = pkind
 				nn = cn
 				ns = search
@@ -371,7 +361,7 @@ func (r *Router) Find(method, path string, context Context) {
 			}
 
 			// Save next
-			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
+			if cn.label == '/' {
 				nk = akind
 				nn = cn
 				ns = search

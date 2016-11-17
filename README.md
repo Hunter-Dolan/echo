@@ -1,11 +1,12 @@
-# [Echo] (https://echo.labstack.com) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/labstack/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo) [![Twitter](https://img.shields.io/badge/twitter-@labstack-55acee.svg?style=flat-square)](https://twitter.com/labstack)
+# [Echo](http://labstack.com/echo) [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/Hunter-Dolan/echo) [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo/master/LICENSE) [![Build Status](http://img.shields.io/travis/labstack/echo.svg?style=flat-square)](https://travis-ci.org/labstack/echo) [![Coverage Status](http://img.shields.io/coveralls/labstack/echo.svg?style=flat-square)](https://coveralls.io/r/labstack/echo) [![Join the chat at https://gitter.im/labstack/echo](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg?style=flat-square)](https://gitter.im/labstack/echo) [![Twitter](https://img.shields.io/badge/twitter-@labstack-55acee.svg?style=flat-square)](https://twitter.com/labstack)
 
-### Fast and unfancy HTTP server framework for Go (Golang).
+#### Fast and unfancy HTTP server framework for Go (Golang). Up to 10x faster than the rest.
 
 ## Feature Overview
 
 - Optimized HTTP router which smartly prioritize routes
 - Build robust and scalable RESTful APIs
+- Run with standard HTTP server or FastHTTP server
 - Group APIs
 - Extensible middleware framework
 - Define middleware at root, group or route level
@@ -15,19 +16,24 @@
 - Template rendering with any template engine
 - Define your format for the logger
 - Highly customizable
-- Automatic TLS via Let’s Encrypt
-- Built-in graceful shutdown
 
 ## Performance
 
-![Performance](https://i.imgur.com/F2V7TfO.png)
+- Environment:
+	- Go 1.6
+	- wrk 4.0.0
+	- 2 GB, 2 Core (DigitalOcean)
+- Test Suite: https://github.com/vishr/web-framework-benchmark
+- Date: 4/4/2016
+
+![Performance](https://i.imgur.com/fZVnK52.png)
 
 ## Quick Start
 
 ### Installation
 
 ```sh
-$ go get -u github.com/labstack/echo
+$ go get -u github.com/Hunter-Dolan/echo
 ```
 
 ### Hello, World!
@@ -39,8 +45,8 @@ package main
 
 import (
 	"net/http"
-	
-	"github.com/labstack/echo"
+	"github.com/Hunter-Dolan/echo"
+	"github.com/Hunter-Dolan/echo/engine/standard"
 )
 
 func main() {
@@ -48,10 +54,7 @@ func main() {
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, World!")
 	})
-
-	if err := e.Start(":1323"); err != nil {
-		e.Logger.Fatal(err.Error())
-	}
+	e.Run(standard.New(":1323"))
 }
 ```
 
@@ -76,31 +79,23 @@ e.DELETE("/users/:id", deleteUser)
 ### Path Parameters
 
 ```go
-// e.GET("/users/:id", getUser)
 func getUser(c echo.Context) error {
-  	// User ID from path `users/:id`
-  	id := c.Param("id")
-	return c.String(http.StatusOK, id)
+	// User ID from path `users/:id`
+	id := c.Param("id")
 }
 ```
-
-Browse to http://localhost:1323/users/Joe and you should see 'Joe' on the page.
 
 ### Query Parameters
 
 `/show?team=x-men&member=wolverine`
 
 ```go
-//e.GET("/show", show)
 func show(c echo.Context) error {
 	// Get team and member from the query string
 	team := c.QueryParam("team")
 	member := c.QueryParam("member")
-	return c.String(http.StatusOK, "team:" + team + ", member:" + member)
 }
 ```
-
-Browse to http://localhost:1323/show?team=x-men&member=wolverine and you should see 'team:x-men, member:wolverine' on the page.
 
 ### Form `application/x-www-form-urlencoded`
 
@@ -113,20 +108,11 @@ email | joe@labstack.com
 
 
 ```go
-// e.POST("/save", save)
 func save(c echo.Context) error {
 	// Get name and email
 	name := c.FormValue("name")
 	email := c.FormValue("email")
-	return c.String(http.StatusOK, "name:" + name + ", email:" + email)
 }
-```
-
-Run the following command:
-
-```sh
-$ curl -F "name=Joe Smith" -F "email=joe@labstack.com" http://localhost:1323/save
-// => name:Joe Smith, email:joe@labstack.com
 ```
 
 ### Form `multipart/form-data`
@@ -136,53 +122,41 @@ $ curl -F "name=Joe Smith" -F "email=joe@labstack.com" http://localhost:1323/sav
 name | value
 :--- | :---
 name | Joe Smith
+email | joe@labstack.com
 avatar | avatar
 
 ```go
 func save(c echo.Context) error {
-	// Get name
+	// Get name and email
 	name := c.FormValue("name")
+	email := c.FormValue("email")
 	// Get avatar
-  	avatar, err := c.FormFile("avatar")
-  	if err != nil {
- 		return err
- 	}
- 
- 	// Source
- 	src, err := avatar.Open()
- 	if err != nil {
- 		return err
- 	}
- 	defer src.Close()
- 
- 	// Destination
- 	dst, err := os.Create(avatar.Filename)
- 	if err != nil {
- 		return err
- 	}
- 	defer dst.Close()
- 
- 	// Copy
- 	if _, err = io.Copy(dst, src); err != nil {
-  		return err
-  	}
+	avatar, err := c.FormFile("avatar")
+	if err != nil {
+		return err
+	}
 
-	return c.HTML(http.StatusOK, "<b>Thank you! " + name + "</b>")
+	// Source
+	src, err := avatar.Open()
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+
+	// Destination
+	dst, err := os.Create(avatar.Filename)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+
+	// Copy
+	if _, err = io.Copy(dst, src); err != nil {
+		return err
+	}
+
+	return c.HTML(http.StatusOK, "<b>Thank you!</b>")
 }
-```
-
-Run the following command.
-```sh
-$ curl -F "name=Joe Smith" -F "avatar=@/path/to/your/avatar.png" http://localhost:1323/save
-// => <b>Thank you! Joe Smith</b>
-```
- 
-For checking uploaded image, run the following command.
-
-```sh
-cd <project directory>
-ls avatar.png
-// => avatar.png
 ```
 
 ### Handling Request
@@ -260,6 +234,7 @@ Middleware | Description
 [Secure](https://echo.labstack.com/middleware/secure) | Protection against attacks
 [CORS](https://echo.labstack.com/middleware/cors) | Cross-Origin Resource Sharing
 [CSRF](https://echo.labstack.com/middleware/csrf) | Cross-Site Request Forgery
+[Static](https://echo.labstack.com/middleware/static) | Serve static files
 [HTTPSRedirect](https://echo.labstack.com/middleware/redirect#httpsredirect-middleware) | Redirect HTTP requests to HTTPS
 [HTTPSWWWRedirect](https://echo.labstack.com/middleware/redirect#httpswwwredirect-middleware) | Redirect HTTP requests to WWW HTTPS
 [WWWRedirect](https://echo.labstack.com/middleware/redirect#wwwredirect-middleware) | Redirect non WWW requests to WWW
@@ -285,7 +260,7 @@ Middleware | Description
 ### Need help?
 
 - [Hop on to chat](https://gitter.im/labstack/echo)
-- [Open an issue](https://github.com/labstack/echo/issues/new)
+- [Open an issue](https://github.com/Hunter-Dolan/echo/issues/new)
 
 ## Support Us
 
@@ -306,8 +281,8 @@ Middleware | Description
 ## Credits
 - [Vishal Rana](https://github.com/vishr) - Author
 - [Nitin Rana](https://github.com/nr17) - Consultant
-- [Contributors](https://github.com/labstack/echo/graphs/contributors)
+- [Contributors](https://github.com/Hunter-Dolan/echo/graphs/contributors)
 
 ## License
 
-[MIT](https://github.com/labstack/echo/blob/master/LICENSE)
+[MIT](https://github.com/Hunter-Dolan/echo/blob/master/LICENSE)

@@ -2,74 +2,61 @@ package middleware
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo"
+	"github.com/Hunter-Dolan/echo"
+	"github.com/Hunter-Dolan/echo/test"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRedirectHTTPSRedirect(t *testing.T) {
+func TestHTTPSRedirect(t *testing.T) {
 	e := echo.New()
 	next := func(c echo.Context) (err error) {
 		return c.NoContent(http.StatusOK)
 	}
-	req, _ := http.NewRequest(echo.GET, "http://labstack.com", nil)
-	res := httptest.NewRecorder()
+	req := test.NewRequest(echo.GET, "http://labstack.com", nil)
+	res := test.NewResponseRecorder()
 	c := e.NewContext(req, res)
 	HTTPSRedirect()(next)(c)
-	assert.Equal(t, http.StatusMovedPermanently, res.Code)
+	assert.Equal(t, http.StatusMovedPermanently, res.Status())
 	assert.Equal(t, "https://labstack.com", res.Header().Get(echo.HeaderLocation))
 }
 
-func TestRedirectHTTPSWWWRedirect(t *testing.T) {
+func TestHTTPSWWWRedirect(t *testing.T) {
 	e := echo.New()
 	next := func(c echo.Context) (err error) {
 		return c.NoContent(http.StatusOK)
 	}
-	req, _ := http.NewRequest(echo.GET, "http://labstack.com", nil)
-	res := httptest.NewRecorder()
+	req := test.NewRequest(echo.GET, "http://labstack.com", nil)
+	res := test.NewResponseRecorder()
 	c := e.NewContext(req, res)
 	HTTPSWWWRedirect()(next)(c)
-	assert.Equal(t, http.StatusMovedPermanently, res.Code)
+	assert.Equal(t, http.StatusMovedPermanently, res.Status())
 	assert.Equal(t, "https://www.labstack.com", res.Header().Get(echo.HeaderLocation))
 }
 
-func TestRedirectHTTPSNonWWWRedirect(t *testing.T) {
+func TestWWWRedirect(t *testing.T) {
 	e := echo.New()
 	next := func(c echo.Context) (err error) {
 		return c.NoContent(http.StatusOK)
 	}
-	req, _ := http.NewRequest(echo.GET, "http://www.labstack.com", nil)
-	res := httptest.NewRecorder()
-	c := e.NewContext(req, res)
-	HTTPSNonWWWRedirect()(next)(c)
-	assert.Equal(t, http.StatusMovedPermanently, res.Code)
-	assert.Equal(t, "https://labstack.com", res.Header().Get(echo.HeaderLocation))
-}
-
-func TestRedirectWWWRedirect(t *testing.T) {
-	e := echo.New()
-	next := func(c echo.Context) (err error) {
-		return c.NoContent(http.StatusOK)
-	}
-	req, _ := http.NewRequest(echo.GET, "http://labstack.com", nil)
-	res := httptest.NewRecorder()
+	req := test.NewRequest(echo.GET, "http://labstack.com", nil)
+	res := test.NewResponseRecorder()
 	c := e.NewContext(req, res)
 	WWWRedirect()(next)(c)
-	assert.Equal(t, http.StatusMovedPermanently, res.Code)
+	assert.Equal(t, http.StatusMovedPermanently, res.Status())
 	assert.Equal(t, "http://www.labstack.com", res.Header().Get(echo.HeaderLocation))
 }
 
-func TestRedirectNonWWWRedirect(t *testing.T) {
+func TestNonWWWRedirect(t *testing.T) {
 	e := echo.New()
 	next := func(c echo.Context) (err error) {
 		return c.NoContent(http.StatusOK)
 	}
-	req, _ := http.NewRequest(echo.GET, "http://www.labstack.com", nil)
-	res := httptest.NewRecorder()
+	req := test.NewRequest(echo.GET, "http://www.labstack.com", nil)
+	res := test.NewResponseRecorder()
 	c := e.NewContext(req, res)
 	NonWWWRedirect()(next)(c)
-	assert.Equal(t, http.StatusMovedPermanently, res.Code)
+	assert.Equal(t, http.StatusMovedPermanently, res.Status())
 	assert.Equal(t, "http://labstack.com", res.Header().Get(echo.HeaderLocation))
 }

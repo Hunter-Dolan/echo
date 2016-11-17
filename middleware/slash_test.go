@@ -2,28 +2,28 @@ package middleware
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo"
+	"github.com/Hunter-Dolan/echo"
+	"github.com/Hunter-Dolan/echo/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAddTrailingSlash(t *testing.T) {
 	e := echo.New()
-	req, _ := http.NewRequest(echo.GET, "/add-slash", nil)
-	rec := httptest.NewRecorder()
+	req := test.NewRequest(echo.GET, "/add-slash", nil)
+	rec := test.NewResponseRecorder()
 	c := e.NewContext(req, rec)
 	h := AddTrailingSlash()(func(c echo.Context) error {
 		return nil
 	})
 	h(c)
-	assert.Equal(t, "/add-slash/", req.URL.Path)
-	assert.Equal(t, "/add-slash/", req.RequestURI)
+	assert.Equal(t, "/add-slash/", req.URL().Path())
+	assert.Equal(t, "/add-slash/", req.URI())
 
 	// With config
-	req, _ = http.NewRequest(echo.GET, "/add-slash?key=value", nil)
-	rec = httptest.NewRecorder()
+	req = test.NewRequest(echo.GET, "/add-slash?key=value", nil)
+	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec)
 	h = AddTrailingSlashWithConfig(TrailingSlashConfig{
 		RedirectCode: http.StatusMovedPermanently,
@@ -31,25 +31,25 @@ func TestAddTrailingSlash(t *testing.T) {
 		return nil
 	})
 	h(c)
-	assert.Equal(t, http.StatusMovedPermanently, rec.Code)
+	assert.Equal(t, http.StatusMovedPermanently, rec.Status())
 	assert.Equal(t, "/add-slash/?key=value", rec.Header().Get(echo.HeaderLocation))
 }
 
 func TestRemoveTrailingSlash(t *testing.T) {
 	e := echo.New()
-	req, _ := http.NewRequest(echo.GET, "/remove-slash/", nil)
-	rec := httptest.NewRecorder()
+	req := test.NewRequest(echo.GET, "/remove-slash/", nil)
+	rec := test.NewResponseRecorder()
 	c := e.NewContext(req, rec)
 	h := RemoveTrailingSlash()(func(c echo.Context) error {
 		return nil
 	})
 	h(c)
-	assert.Equal(t, "/remove-slash", req.URL.Path)
-	assert.Equal(t, "/remove-slash", req.RequestURI)
+	assert.Equal(t, "/remove-slash", req.URL().Path())
+	assert.Equal(t, "/remove-slash", req.URI())
 
 	// With config
-	req, _ = http.NewRequest(echo.GET, "/remove-slash/?key=value", nil)
-	rec = httptest.NewRecorder()
+	req = test.NewRequest(echo.GET, "/remove-slash/?key=value", nil)
+	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec)
 	h = RemoveTrailingSlashWithConfig(TrailingSlashConfig{
 		RedirectCode: http.StatusMovedPermanently,
@@ -57,16 +57,16 @@ func TestRemoveTrailingSlash(t *testing.T) {
 		return nil
 	})
 	h(c)
-	assert.Equal(t, http.StatusMovedPermanently, rec.Code)
+	assert.Equal(t, http.StatusMovedPermanently, rec.Status())
 	assert.Equal(t, "/remove-slash?key=value", rec.Header().Get(echo.HeaderLocation))
 
 	// With bare URL
-	req, _ = http.NewRequest(echo.GET, "http://localhost", nil)
-	rec = httptest.NewRecorder()
+	req = test.NewRequest(echo.GET, "http://localhost", nil)
+	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec)
 	h = RemoveTrailingSlash()(func(c echo.Context) error {
 		return nil
 	})
 	h(c)
-	assert.Equal(t, "", req.URL.Path)
+	assert.Equal(t, "", req.URL().Path())
 }

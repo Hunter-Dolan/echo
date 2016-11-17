@@ -5,7 +5,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/labstack/echo"
+	"github.com/Hunter-Dolan/echo"
 	"github.com/labstack/gommon/bytes"
 )
 
@@ -23,7 +23,7 @@ type (
 
 	limitedReader struct {
 		BodyLimitConfig
-		reader  io.ReadCloser
+		reader  io.Reader
 		read    int64
 		context echo.Context
 	}
@@ -74,15 +74,15 @@ func BodyLimitWithConfig(config BodyLimitConfig) echo.MiddlewareFunc {
 			req := c.Request()
 
 			// Based on content length
-			if req.ContentLength > config.limit {
+			if req.ContentLength() > config.limit {
 				return echo.ErrStatusRequestEntityTooLarge
 			}
 
 			// Based on content read
 			r := pool.Get().(*limitedReader)
-			r.Reset(req.Body, c)
+			r.Reset(req.Body(), c)
 			defer pool.Put(r)
-			req.Body = r
+			req.SetBody(r)
 
 			return next(c)
 		}
@@ -98,11 +98,7 @@ func (r *limitedReader) Read(b []byte) (n int, err error) {
 	return
 }
 
-func (r *limitedReader) Close() error {
-	return r.reader.Close()
-}
-
-func (r *limitedReader) Reset(reader io.ReadCloser, context echo.Context) {
+func (r *limitedReader) Reset(reader io.Reader, context echo.Context) {
 	r.reader = reader
 	r.context = context
 }

@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"github.com/labstack/echo"
+	"github.com/Hunter-Dolan/echo"
 )
 
 type (
@@ -46,9 +46,9 @@ func AddTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc 
 			}
 
 			req := c.Request()
-			url := req.URL
-			path := url.Path
-			qs := c.QueryString()
+			url := req.URL()
+			path := url.Path()
+			qs := url.QueryString()
 			if path != "/" && path[len(path)-1] != '/' {
 				path += "/"
 				uri := path
@@ -62,8 +62,8 @@ func AddTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFunc 
 				}
 
 				// Forward
-				req.RequestURI = uri
-				url.Path = path
+				req.SetURI(uri)
+				url.SetPath(path)
 			}
 			return next(c)
 		}
@@ -93,9 +93,9 @@ func RemoveTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFu
 			}
 
 			req := c.Request()
-			url := req.URL
-			path := url.Path
-			qs := c.QueryString()
+			url := req.URL()
+			path := url.Path()
+			qs := url.QueryString()
 			l := len(path) - 1
 			if l >= 0 && path != "/" && path[l] == '/' {
 				path = path[:l]
@@ -110,8 +110,8 @@ func RemoveTrailingSlashWithConfig(config TrailingSlashConfig) echo.MiddlewareFu
 				}
 
 				// Forward
-				req.RequestURI = uri
-				url.Path = path
+				req.SetURI(uri)
+				url.SetPath(path)
 			}
 			return next(c)
 		}
