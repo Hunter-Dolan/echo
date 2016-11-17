@@ -48,8 +48,7 @@ import (
 	"runtime"
 	"sync"
 
-	"golang.org/x/net/context"
-
+	gcontext "github.com/Hunter-Dolan/echo/context"
 	"github.com/Hunter-Dolan/echo/engine"
 	"github.com/Hunter-Dolan/echo/log"
 	glog "github.com/labstack/gommon/log"
@@ -58,6 +57,7 @@ import (
 type (
 	// Echo is the top-level framework instance.
 	Echo struct {
+		server           engine.Server
 		premiddleware    []MiddlewareFunc
 		middleware       []MiddlewareFunc
 		maxParam         *int
@@ -237,13 +237,14 @@ func New() (e *Echo) {
 
 // NewContext returns a Context instance.
 func (e *Echo) NewContext(req engine.Request, res engine.Response) Context {
-	return &echoContext{
-		context:  context.Background(),
-		request:  req,
-		response: res,
-		echo:     e,
-		pvalues:  make([]string, *e.maxParam),
-		handler:  NotFoundHandler,
+	return &context{
+		stdContext: gcontext.Background(),
+		request:    req,
+		response:   res,
+		store:      make(store),
+		echo:       e,
+		pvalues:    make([]string, *e.maxParam),
+		handler:    NotFoundHandler,
 	}
 }
 
@@ -472,7 +473,7 @@ func (e *Echo) add(method, path string, handler HandlerFunc, middleware ...Middl
 			h = middleware[i](h)
 		}
 		return h(c)
-	}, e)
+	})
 	r := Route{
 		Method:  method,
 		Path:    path,
@@ -540,15 +541,15 @@ func (e *Echo) ReleaseContext(c Context) {
 }
 
 func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
-	c := e.pool.Get().(*echoContext)
+	c := e.pool.Get().(*context)
 	c.Reset(req, res)
 
 	// Middleware
-	h := func(Context) error {
+	h := func(c Context) error {
 		method := req.Method()
 		path := req.URL().Path()
 		e.router.Find(method, path, c)
-		h := c.handler
+		h := c.Handler()
 		for i := len(e.middleware) - 1; i >= 0; i-- {
 			h = e.middleware[i](h)
 		}
@@ -569,16 +570,20 @@ func (e *Echo) ServeHTTP(req engine.Request, res engine.Response) {
 }
 
 // Run starts the HTTP server.
-func (e *Echo) Run(s engine.Server) {
+func (e *Echo) Run(s engine.Server) error {
+	e.server = s
 	s.SetHandler(e)
 	s.SetLogger(e.logger)
 	if e.Debug() {
 		e.SetLogLevel(glog.DEBUG)
 		e.logger.Debug("running in debug mode")
 	}
-	if err := s.Start(); err != nil {
-		panic(fmt.Sprintf("echo: %v", err))
-	}
+	return s.Start()
+}
+
+// Stop stops the HTTP server.
+func (e *Echo) Stop() error {
+	return e.server.Stop()
 }
 
 // NewHTTPError creates a new HTTPError instance.
